@@ -16,6 +16,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from app.core.config import Settings
+from app.infra.llm.fake import FakeLLMProvider
 from app.main import create_app
 
 LogReader = Callable[[], list[dict[str, Any]]]
@@ -35,8 +36,14 @@ def settings() -> Settings:
 
 
 @pytest.fixture
-def app(settings: Settings) -> FastAPI:
-    return create_app(settings)
+def fake_llm() -> FakeLLMProvider:
+    """Provider injetado na aplicação: programe respostas e inspecione as requests no teste."""
+    return FakeLLMProvider()
+
+
+@pytest.fixture
+def app(settings: Settings, fake_llm: FakeLLMProvider) -> FastAPI:
+    return create_app(settings, llm_provider=fake_llm)
 
 
 @pytest.fixture

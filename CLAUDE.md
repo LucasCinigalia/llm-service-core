@@ -43,7 +43,7 @@ Regra: `domain/` não importa nada de `infra/`, `api/` nem de bibliotecas de ter
 - [x] 6. feat(api): app factory FastAPI, `/health`, middleware de request ID, tratamento de erros
 - [x] 7. feat(domain): modelos de domínio do LLM e port `LLMProvider`
 - [x] 8. feat(infra): provider fake + testes
-- [ ] 9. feat(services/api): serviço de chat + endpoint `/v1/chat`
+- [x] 9. feat(services/api): serviço de chat + endpoint `/v1/chat`
 - [ ] 10. feat(infra): adapter Anthropic
 - [ ] 11. feat(infra): adapter OpenAI
 - [ ] 12. feat: streaming via SSE
