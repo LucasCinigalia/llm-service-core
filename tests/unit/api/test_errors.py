@@ -61,6 +61,14 @@ def test_validation_error_uses_standard_envelope(client_with_routes: TestClient)
     assert error["details"]["errors"][0]["loc"] == ["path", "item_id"]
 
 
+def test_validation_error_does_not_echo_the_rejected_input(client_with_routes: TestClient) -> None:
+    response = client_with_routes.get("/items/my-secret-token")
+
+    [error] = response.json()["error"]["details"]["errors"]
+    assert "input" not in error
+    assert "my-secret-token" not in response.text
+
+
 def test_unknown_route_uses_standard_envelope(client_with_routes: TestClient) -> None:
     response = client_with_routes.get("/does-not-exist")
 

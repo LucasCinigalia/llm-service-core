@@ -86,11 +86,14 @@ async def handle_http_exception(_request: Request, exc: Exception) -> JSONRespon
 
 async def handle_validation_error(_request: Request, exc: Exception) -> JSONResponse:
     exc = _ensure_type(exc, RequestValidationError)
+    # Removemos "input" (o valor recebido): ecoá-lo devolveria conteúdo possivelmente sensível
+    # ou enorme (ex.: uma conversa de 100 mil caracteres). "loc" e "msg" bastam para corrigir.
+    errors = [{k: v for k, v in error.items() if k != "input"} for error in exc.errors()]
     return error_response(
         HTTPStatus.UNPROCESSABLE_ENTITY,
         "validation_error",
         "Request validation failed.",
-        {"errors": jsonable_encoder(exc.errors())},
+        {"errors": jsonable_encoder(errors)},
     )
 
 
