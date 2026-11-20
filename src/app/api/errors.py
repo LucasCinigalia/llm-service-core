@@ -16,7 +16,15 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from app.core.errors import AppError, ExternalServiceError, InvalidInputError, NotFoundError
+from app.core.errors import (
+    AppError,
+    ExternalServiceError,
+    InvalidInputError,
+    LLMRateLimitError,
+    LLMTimeoutError,
+    LLMUnavailableError,
+    NotFoundError,
+)
 from app.core.logging import get_logger
 
 logger = get_logger(__name__)
@@ -26,6 +34,9 @@ STATUS_BY_ERROR: dict[type[AppError], HTTPStatus] = {
     NotFoundError: HTTPStatus.NOT_FOUND,
     InvalidInputError: HTTPStatus.UNPROCESSABLE_ENTITY,
     ExternalServiceError: HTTPStatus.BAD_GATEWAY,
+    LLMTimeoutError: HTTPStatus.GATEWAY_TIMEOUT,
+    LLMRateLimitError: HTTPStatus.SERVICE_UNAVAILABLE,
+    LLMUnavailableError: HTTPStatus.SERVICE_UNAVAILABLE,
     AppError: HTTPStatus.INTERNAL_SERVER_ERROR,
 }
 

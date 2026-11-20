@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.12"
 license = "MIT"
 dependencies = [
+    "anthropic>=2.12.0",
     "fastapi>=0.165.0",
     "pydantic-settings>=2.16.3",
     "structlog>=26.1.0",

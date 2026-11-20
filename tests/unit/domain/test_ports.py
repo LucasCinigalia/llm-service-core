@@ -24,6 +24,9 @@ class EchoProvider:
             usage=Usage(input_tokens=len(last), output_tokens=len(last)),
         )
 
+    async def aclose(self) -> None:
+        pass
+
 
 async def ask(provider: LLMProvider, text: str) -> str:
     """Código que depende só do port — não sabe qual provider recebeu."""

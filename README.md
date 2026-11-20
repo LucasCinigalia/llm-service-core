@@ -26,5 +26,11 @@ Toda a configuração vem de variáveis de ambiente (ou de um arquivo `.env`):
 cp .env.example .env
 ```
 
-Sem nenhuma chave de API o serviço já funciona com o provider `fake`. Veja
+Sem nenhuma chave de API o serviço já funciona com o provider `fake`. Para usar o Claude:
+
+```bash
+LLM__DEFAULT_PROVIDER=anthropic
+LLM__ANTHROPIC_API_KEY=sk-ant-...
+```
+ Veja
 [`.env.example`](.env.example) para todas as opções e `src/app/core/config.py` para a validação.

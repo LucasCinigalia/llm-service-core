@@ -19,3 +19,7 @@ class LLMProvider(Protocol):
     async def chat(self, request: ChatRequest) -> ChatResponse:
         """Envia a conversa e devolve a resposta completa (sem streaming)."""
         ...
+
+    async def aclose(self) -> None:
+        """Libera recursos (conexões HTTP). Chamado no shutdown da aplicação."""
+        ...

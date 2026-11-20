@@ -6,7 +6,17 @@ from fastapi.testclient import TestClient
 
 from app.api.errors import error_response, status_for
 from app.api.middleware import REQUEST_ID_HEADER
-from app.core.errors import AppError, ExternalServiceError, InvalidInputError, NotFoundError
+from app.core.errors import (
+    AppError,
+    ExternalServiceError,
+    InvalidInputError,
+    LLMConfigurationError,
+    LLMRateLimitError,
+    LLMRequestRejectedError,
+    LLMTimeoutError,
+    LLMUnavailableError,
+    NotFoundError,
+)
 
 
 class ConversationNotFoundError(NotFoundError):
@@ -32,6 +42,11 @@ def client_with_routes(app: FastAPI) -> TestClient:
         (InvalidInputError("x"), 422),
         (ExternalServiceError("x"), 502),
         (AppError("x"), 500),
+        (LLMTimeoutError("x"), 504),
+        (LLMRateLimitError("x"), 503),
+        (LLMUnavailableError("x"), 503),
+        (LLMRequestRejectedError("x"), 422),  # herda de InvalidInputError
+        (LLMConfigurationError("x"), 500),  # erro nosso: herda de AppError
     ],
 )
 def test_maps_domain_errors_to_http_status(error: AppError, expected_status: int) -> None:

@@ -33,6 +33,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         llm_provider=app.state.llm_provider.name,
     )
     yield
+    await app.state.llm_provider.aclose()
     logger.info("app_stopped")
 
 

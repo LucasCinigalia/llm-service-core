@@ -89,8 +89,8 @@ def test_get_settings_returns_cached_instance() -> None:
     assert get_settings() is get_settings()
 
 
-def test_max_output_tokens_defaults_to_1024() -> None:
-    assert make_settings().llm.max_output_tokens == 1024
+def test_max_output_tokens_defaults_to_16000() -> None:
+    assert make_settings().llm.max_output_tokens == 16000
 
 
 def test_max_output_tokens_is_read_from_environment(monkeypatch: pytest.MonkeyPatch) -> None:

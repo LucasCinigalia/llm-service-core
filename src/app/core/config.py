@@ -33,7 +33,15 @@ class LLMSettings(BaseModel):
     anthropic_api_key: SecretStr | None = None
     openai_api_key: SecretStr | None = None
     request_timeout_seconds: float = Field(default=60.0, gt=0, le=600)
-    max_output_tokens: int = Field(default=1024, ge=1, le=32000)
+    # Padrão generoso: em modelos com raciocínio (thinking), os tokens de raciocínio também contam
+    # no limite. Um valor baixo corta a resposta antes do texto final.
+    max_output_tokens: int = Field(default=16000, ge=1, le=32000)
+    # Retentativas feitas pelo próprio SDK (falhas transitórias). Resiliência completa: commit 15.
+    max_retries: int = Field(default=2, ge=0, le=10)
+
+    anthropic_model: str = "claude-opus-5-5"
+    # Se o modelo recusar por política de segurança, a API refaz a chamada em outro modelo.
+    anthropic_refusal_fallback: bool = True
 
     @model_validator(mode="after")
     def _require_key_for_default_provider(self) -> Self:

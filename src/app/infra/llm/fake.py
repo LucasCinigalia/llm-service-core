@@ -65,6 +65,9 @@ class FakeLLMProvider:
             return item
         return self._build_response(request, item)
 
+    async def aclose(self) -> None:
+        """Nada a liberar: o fake não abre conexões."""
+
     @staticmethod
     def _echo(request: ChatRequest) -> str:
         return f"[fake] {request.messages[-1].content}"

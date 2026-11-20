@@ -51,7 +51,7 @@ def test_translates_http_body_into_domain_request(
     assert sent.system == "Seja conciso."
     assert sent.model == "fake-large"
     assert sent.temperature == 0.3
-    assert sent.max_output_tokens == 1024  # padrão da configuração aplicado pelo service
+    assert sent.max_output_tokens == 16000  # padrão da configuração aplicado pelo service
 
 
 @pytest.mark.parametrize(
