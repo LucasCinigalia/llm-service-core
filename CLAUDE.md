@@ -36,7 +36,7 @@ Regra: `domain/` não importa nada de `infra/`, `api/` nem de bibliotecas de ter
 ## Plano de commits do Projeto 0
 
 - [x] 1. docs: roadmap e memória do projeto (este arquivo + `docs/ROADMAP.md`)
-- [ ] 2. chore: inicializar projeto com uv (pyproject, src layout, .gitignore, README)
+- [x] 2. chore: inicializar projeto com uv (pyproject, src layout, .gitignore, README)
 - [ ] 3. chore: ferramentas de qualidade (ruff, mypy, pytest, Makefile, pre-commit)
 - [ ] 4. feat(core): configuração com pydantic-settings + `.env.example`
 - [ ] 5. feat(core): logging estruturado com structlog
