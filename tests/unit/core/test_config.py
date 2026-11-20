@@ -1,0 +1,81 @@
+"""Testes da configuração.
+
+Usamos ``_env_file=None`` para que um ``.env`` local na sua máquina não interfira nos testes,
+e ``monkeypatch`` para definir variáveis de ambiente que são desfeitas ao fim de cada teste.
+"""
+
+import pytest
+from pydantic import SecretStr, ValidationError
+
+from app.core.config import Environment, Settings, get_settings
+
+
+def make_settings(**overrides: object) -> Settings:
+    return Settings(_env_file=None, **overrides)  # type: ignore[arg-type]
+
+
+def test_defaults_work_without_any_configuration() -> None:
+    settings = make_settings()
+
+    assert settings.environment is Environment.LOCAL
+    assert settings.debug is False
+    assert settings.llm.default_provider == "fake"
+
+
+def test_reads_values_from_environment_variables(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ENVIRONMENT", "staging")
+    monkeypatch.setenv("LOG_LEVEL", "DEBUG")
+
+    settings = make_settings()
+
+    assert settings.environment is Environment.STAGING
+    assert settings.log_level == "DEBUG"
+
+
+def test_nested_values_use_double_underscore(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("LLM__DEFAULT_PROVIDER", "anthropic")
+    monkeypatch.setenv("LLM__ANTHROPIC_API_KEY", "sk-ant-test")
+    monkeypatch.setenv("LLM__REQUEST_TIMEOUT_SECONDS", "30")
+
+    settings = make_settings()
+
+    assert settings.llm.default_provider == "anthropic"
+    assert settings.llm.request_timeout_seconds == 30.0
+
+
+def test_api_keys_are_masked_when_printed(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("LLM__OPENAI_API_KEY", "sk-super-secret")
+
+    settings = make_settings()
+
+    assert isinstance(settings.llm.openai_api_key, SecretStr)
+    assert "sk-super-secret" not in repr(settings)
+    assert "sk-super-secret" not in str(settings.model_dump())
+    assert settings.llm.openai_api_key.get_secret_value() == "sk-super-secret"
+
+
+def test_rejects_invalid_values(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("LOG_LEVEL", "VERBOSE")
+
+    with pytest.raises(ValidationError, match="log_level"):
+        make_settings()
+
+
+def test_fails_fast_when_default_provider_has_no_api_key(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("LLM__DEFAULT_PROVIDER", "openai")
+
+    with pytest.raises(ValidationError, match="LLM__OPENAI_API_KEY"):
+        make_settings()
+
+
+def test_debug_is_forbidden_in_production() -> None:
+    with pytest.raises(ValidationError, match="debug must be disabled"):
+        make_settings(environment="production", debug=True)
+
+
+def test_get_settings_returns_cached_instance() -> None:
+    get_settings.cache_clear()
+
+    assert get_settings() is get_settings()
