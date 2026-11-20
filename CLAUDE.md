@@ -39,7 +39,7 @@ Regra: `domain/` não importa nada de `infra/`, `api/` nem de bibliotecas de ter
 - [x] 2. chore: inicializar projeto com uv (pyproject, src layout, .gitignore, README)
 - [x] 3. chore: ferramentas de qualidade (ruff, mypy, pytest, Makefile, pre-commit)
 - [x] 4. feat(core): configuração com pydantic-settings + `.env.example`
-- [ ] 5. feat(core): logging estruturado com structlog
+- [x] 5. feat(core): logging estruturado com structlog
 - [ ] 6. feat(api): app factory FastAPI, `/health`, middleware de request ID, tratamento de erros
 - [ ] 7. feat(domain): modelos de domínio do LLM e port `LLMProvider`
 - [ ] 8. feat(infra): provider fake + testes

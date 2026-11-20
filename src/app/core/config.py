@@ -64,6 +64,11 @@ class Settings(BaseSettings):
 
     llm: LLMSettings = Field(default_factory=LLMSettings)
 
+    @property
+    def json_logs(self) -> bool:
+        """Logs legíveis para humanos só no dev local; JSON em qualquer outro ambiente."""
+        return self.environment is not Environment.LOCAL
+
     @model_validator(mode="after")
     def _forbid_debug_in_production(self) -> Self:
         if self.environment is Environment.PRODUCTION and self.debug:

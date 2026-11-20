@@ -75,6 +75,14 @@ def test_debug_is_forbidden_in_production() -> None:
         make_settings(environment="production", debug=True)
 
 
+@pytest.mark.parametrize(
+    ("environment", "expected"),
+    [("local", False), ("test", True), ("staging", True), ("production", True)],
+)
+def test_json_logs_everywhere_except_local(environment: str, expected: bool) -> None:
+    assert make_settings(environment=environment).json_logs is expected
+
+
 def test_get_settings_returns_cached_instance() -> None:
     get_settings.cache_clear()
 
