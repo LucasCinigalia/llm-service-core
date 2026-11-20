@@ -40,7 +40,7 @@ Regra: `domain/` não importa nada de `infra/`, `api/` nem de bibliotecas de ter
 - [x] 3. chore: ferramentas de qualidade (ruff, mypy, pytest, Makefile, pre-commit)
 - [x] 4. feat(core): configuração com pydantic-settings + `.env.example`
 - [x] 5. feat(core): logging estruturado com structlog
-- [ ] 6. feat(api): app factory FastAPI, `/health`, middleware de request ID, tratamento de erros
+- [x] 6. feat(api): app factory FastAPI, `/health`, middleware de request ID, tratamento de erros
 - [ ] 7. feat(domain): modelos de domínio do LLM e port `LLMProvider`
 - [ ] 8. feat(infra): provider fake + testes
 - [ ] 9. feat(services/api): serviço de chat + endpoint `/v1/chat`
@@ -63,6 +63,7 @@ Regra: `domain/` não importa nada de `infra/`, `api/` nem de bibliotecas de ter
 
 ```bash
 make install    # uv sync + instala hooks do pre-commit
+make dev        # API com auto-reload em http://localhost:8000 (/docs)
 make lint       # ruff check + ruff format --check
 make format     # corrige e formata
 make typecheck  # mypy strict

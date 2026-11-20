@@ -33,6 +33,7 @@ def configure_logging(
         structlog.stdlib.add_logger_name,
         # Para logs da stdlib: preserva campos passados via `extra={...}`.
         structlog.stdlib.ExtraAdder(),
+        _drop_color_message,
         structlog.processors.TimeStamper(fmt="iso", utc=True),
         structlog.processors.StackInfoRenderer(),
         add_service_name(service),
@@ -75,11 +76,29 @@ def configure_logging(
     root_logger.addHandler(handler)
     root_logger.setLevel(level.upper())
 
+    # O uvicorn instala handlers próprios (formato de texto). Removemos e deixamos os logs
+    # "subirem" até o root, para saírem no nosso formato.
+    for name in ("uvicorn", "uvicorn.error"):
+        uvicorn_logger = logging.getLogger(name)
+        uvicorn_logger.handlers.clear()
+        uvicorn_logger.propagate = True
+    # O access log do uvicorn é desligado: o RequestContextMiddleware gera um log de acesso
+    # mais completo (request_id, duração). Evita duas linhas por request.
+    logging.getLogger("uvicorn.access").disabled = True
+
 
 def get_logger(name: str | None = None) -> structlog.stdlib.BoundLogger:
     """Retorna um logger estruturado. Convenção: ``get_logger(__name__)``."""
     logger: structlog.stdlib.BoundLogger = structlog.stdlib.get_logger(name)
     return logger
+
+
+def _drop_color_message(
+    _logger: WrappedLogger, _method_name: str, event_dict: EventDict
+) -> EventDict:
+    """O uvicorn envia, via ``extra``, uma cópia da mensagem com códigos de cor ANSI."""
+    event_dict.pop("color_message", None)
+    return event_dict
 
 
 EventProcessor = Callable[[WrappedLogger, str, EventDict], EventDict]

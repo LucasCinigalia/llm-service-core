@@ -126,3 +126,25 @@ def test_every_log_includes_service_name(capsys: pytest.CaptureFixture[str]) -> 
     structlog_record, stdlib_record = read_json_lines(capsys)
     assert structlog_record["service"] == "my-service"
     assert stdlib_record["service"] == "my-service"
+
+
+def test_uvicorn_logs_use_our_format_without_color_message(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    configure_logging(json_logs=True)
+
+    logging.getLogger("uvicorn.error").info(
+        "Application startup complete.", extra={"color_message": "\x1b[1mcolored\x1b[0m"}
+    )
+
+    [record] = read_json_lines(capsys)
+    assert record["event"] == "Application startup complete."
+    assert "color_message" not in record
+
+
+def test_uvicorn_access_log_is_disabled(capsys: pytest.CaptureFixture[str]) -> None:
+    configure_logging(json_logs=True)
+
+    logging.getLogger("uvicorn.access").info("GET /health 200")
+
+    assert read_json_lines(capsys) == []

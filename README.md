@@ -14,6 +14,7 @@ descrita em [`docs/ROADMAP.md`](docs/ROADMAP.md).
 ```bash
 make install   # instala dependências e hooks do pre-commit
 make check     # lint + checagem de tipos + testes
+make dev       # sobe a API em http://localhost:8000 (docs em /docs)
 make help      # lista todos os comandos
 ```
 
