@@ -16,12 +16,15 @@ Uso::
 
 import logging
 import sys
+from collections.abc import Callable
 
 import structlog
-from structlog.typing import Processor
+from structlog.typing import EventDict, Processor, WrappedLogger
 
 
-def configure_logging(level: str = "INFO", *, json_logs: bool = False) -> None:
+def configure_logging(
+    level: str = "INFO", *, json_logs: bool = False, service: str = "llm-service-core"
+) -> None:
     """Configura structlog e o ``logging`` da biblioteca padrão. Chamar uma vez no startup."""
     shared_processors: list[Processor] = [
         # Injeta o contexto da request atual (ex.: request_id) em todos os logs.
@@ -32,6 +35,7 @@ def configure_logging(level: str = "INFO", *, json_logs: bool = False) -> None:
         structlog.stdlib.ExtraAdder(),
         structlog.processors.TimeStamper(fmt="iso", utc=True),
         structlog.processors.StackInfoRenderer(),
+        add_service_name(service),
     ]
 
     renderer: Processor
@@ -76,3 +80,16 @@ def get_logger(name: str | None = None) -> structlog.stdlib.BoundLogger:
     """Retorna um logger estruturado. Convenção: ``get_logger(__name__)``."""
     logger: structlog.stdlib.BoundLogger = structlog.stdlib.get_logger(name)
     return logger
+
+
+EventProcessor = Callable[[WrappedLogger, str, EventDict], EventDict]
+
+
+def add_service_name(service: str) -> EventProcessor:
+    """Cria um processador que adiciona ``service=<nome>`` em todo log."""
+
+    def processor(_logger: WrappedLogger, _method_name: str, event_dict: EventDict) -> EventDict:
+        event_dict.setdefault("service", service)
+        return event_dict
+
+    return processor

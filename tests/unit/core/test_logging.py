@@ -12,7 +12,7 @@ from typing import Any
 import pytest
 import structlog
 
-from app.core.logging import configure_logging, get_logger
+from app.core.logging import add_service_name, configure_logging, get_logger
 
 
 @pytest.fixture(autouse=True)
@@ -103,3 +103,26 @@ def test_console_mode_is_human_readable(capsys: pytest.CaptureFixture[str]) -> N
     assert "name" in output
     with pytest.raises(json.JSONDecodeError):
         json.loads(output)
+
+
+def test_service_name_processor_adds_field() -> None:
+    processor = add_service_name("my-service")
+    result = processor(None, "info", {"event": "hello"})
+    assert result == {"event": "hello", "service": "my-service"}
+
+
+def test_service_name_does_not_override_explicit_value() -> None:
+    processor = add_service_name("my-service")
+    result = processor(None, "info", {"event": "hello", "service": "other"})
+    assert result["service"] == "other"
+
+
+def test_every_log_includes_service_name(capsys: pytest.CaptureFixture[str]) -> None:
+    configure_logging(json_logs=True, service="my-service")
+
+    get_logger("tests").info("from_structlog")
+    logging.getLogger("third_party").warning("from_stdlib")
+
+    structlog_record, stdlib_record = read_json_lines(capsys)
+    assert structlog_record["service"] == "my-service"
+    assert stdlib_record["service"] == "my-service"
