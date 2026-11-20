@@ -87,3 +87,27 @@ def test_get_settings_returns_cached_instance() -> None:
     get_settings.cache_clear()
 
     assert get_settings() is get_settings()
+
+
+def test_max_output_tokens_defaults_to_1024() -> None:
+    assert make_settings().llm.max_output_tokens == 1024
+
+
+def test_max_output_tokens_is_read_from_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("LLM__MAX_OUTPUT_TOKENS", "4096")
+    assert make_settings().llm.max_output_tokens == 4096
+
+
+@pytest.mark.parametrize("value", ["0", "-5", "32001"])
+def test_max_output_tokens_rejects_out_of_range(
+    monkeypatch: pytest.MonkeyPatch, value: str
+) -> None:
+    monkeypatch.setenv("LLM__MAX_OUTPUT_TOKENS", value)
+    with pytest.raises(ValidationError, match="max_output_tokens"):
+        make_settings()
+
+
+@pytest.mark.parametrize("value", ["1", "32000"])
+def test_max_output_tokens_accepts_boundaries(monkeypatch: pytest.MonkeyPatch, value: str) -> None:
+    monkeypatch.setenv("LLM__MAX_OUTPUT_TOKENS", value)
+    assert make_settings().llm.max_output_tokens == int(value)
