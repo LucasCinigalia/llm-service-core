@@ -13,3 +13,67 @@ build-backend = "uv_build"
 
 [tool.uv.build-backend]
 module-name = "app"
+
+[dependency-groups]
+dev = [
+    "mypy>=2.4.1",
+    "pre-commit>=4.7.0",
+    "pytest>=9.2.0",
+    "pytest-cov>=7.1.0",
+    "ruff>=0.17.6",
+]
+
+# ---------------------------------------------------------------------------
+# Ruff — linter + formatter
+# ---------------------------------------------------------------------------
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E", "W",   # pycodestyle: erros e avisos de estilo (PEP 8)
+    "F",        # pyflakes: imports/variáveis não usados, nomes indefinidos
+    "I",        # isort: ordenação de imports
+    "N",        # pep8-naming: convenções de nomes
+    "UP",       # pyupgrade: sintaxe moderna para a versão-alvo do Python
+    "B",        # flake8-bugbear: bugs prováveis e armadilhas comuns
+    "SIM",      # flake8-simplify: código que pode ser simplificado
+    "C4",       # flake8-comprehensions: comprehensions melhores
+    "RUF",      # regras próprias do Ruff
+    "ASYNC",    # armadilhas de código assíncrono (ex.: chamada bloqueante em async)
+    "S",        # flake8-bandit: problemas de segurança
+    "PT",       # flake8-pytest-style: boas práticas em testes
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Em testes, `assert` é o próprio mecanismo de verificação (S101 o proíbe em código de produção).
+"tests/**" = ["S101"]
+
+# ---------------------------------------------------------------------------
+# Mypy — checagem estática de tipos
+# ---------------------------------------------------------------------------
+[tool.mypy]
+python_version = "3.12"
+strict = true
+mypy_path = "src"
+packages = ["app"]
+warn_unreachable = true
+pretty = true
+
+# ---------------------------------------------------------------------------
+# Pytest + cobertura
+# ---------------------------------------------------------------------------
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = ["-ra", "--strict-markers", "--strict-config"]
+xfail_strict = true
+
+[tool.coverage.run]
+source = ["app"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true

@@ -37,7 +37,7 @@ Regra: `domain/` não importa nada de `infra/`, `api/` nem de bibliotecas de ter
 
 - [x] 1. docs: roadmap e memória do projeto (este arquivo + `docs/ROADMAP.md`)
 - [x] 2. chore: inicializar projeto com uv (pyproject, src layout, .gitignore, README)
-- [ ] 3. chore: ferramentas de qualidade (ruff, mypy, pytest, Makefile, pre-commit)
+- [x] 3. chore: ferramentas de qualidade (ruff, mypy, pytest, Makefile, pre-commit)
 - [ ] 4. feat(core): configuração com pydantic-settings + `.env.example`
 - [ ] 5. feat(core): logging estruturado com structlog
 - [ ] 6. feat(api): app factory FastAPI, `/health`, middleware de request ID, tratamento de erros
@@ -61,4 +61,14 @@ Regra: `domain/` não importa nada de `infra/`, `api/` nem de bibliotecas de ter
 
 ## Comandos
 
-(serão preenchidos conforme as ferramentas forem adicionadas)
+```bash
+make install    # uv sync + instala hooks do pre-commit
+make lint       # ruff check + ruff format --check
+make format     # corrige e formata
+make typecheck  # mypy strict
+make test       # pytest
+make cov        # pytest com cobertura
+make check      # lint + typecheck + test (o mesmo que o CI)
+```
+
+Dependências: `uv add <pkg>` (produção) / `uv add --dev <pkg>` (desenvolvimento).

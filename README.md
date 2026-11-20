@@ -12,6 +12,7 @@ descrita em [`docs/ROADMAP.md`](docs/ROADMAP.md).
 ## Começando
 
 ```bash
-uv sync
-uv run python -c "import app; print(app.__version__)"
+make install   # instala dependências e hooks do pre-commit
+make check     # lint + checagem de tipos + testes
+make help      # lista todos os comandos
 ```
