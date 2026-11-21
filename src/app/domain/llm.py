@@ -5,6 +5,7 @@ para o formato do seu SDK e traduz a resposta de volta. O resto do código nunca
 """
 
 from enum import StrEnum
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field
 
@@ -65,3 +66,21 @@ class ChatResponse(DomainModel):
     provider: str
     stop_reason: StopReason
     usage: Usage
+
+
+# --- Streaming ----------------------------------------------------------------------------------
+# Um stream é uma sequência de eventos: vários TextDelta (pedaços do texto, na ordem) e, por
+# último, exatamente um StreamCompleted com a resposta consolidada (texto completo, tokens, etc.).
+
+
+class TextDelta(DomainModel):
+    type: Literal["text_delta"] = "text_delta"
+    text: str = Field(min_length=1)
+
+
+class StreamCompleted(DomainModel):
+    type: Literal["completed"] = "completed"
+    response: ChatResponse
+
+
+StreamEvent = TextDelta | StreamCompleted

@@ -44,3 +44,21 @@ def raise_timeout(request: httpx2.Request) -> httpx2.Response:
 
 def raise_connection_error(request: httpx2.Request) -> httpx2.Response:
     raise httpx2.ConnectError("connection refused", request=request)
+
+
+def sse_response(events: list[tuple[str | None, dict[str, Any] | str]]) -> Handler:
+    """Resposta de streaming no formato Server-Sent Events (``text/event-stream``).
+
+    Cada evento é ``(nome, dados)``. A Anthropic nomeia os eventos (``event: message_start``);
+    a OpenAI não (só ``data: ...``) e termina com ``data: [DONE]``.
+    """
+    lines: list[str] = []
+    for name, data in events:
+        if name is not None:
+            lines.append(f"event: {name}")
+        lines.append(f"data: {data if isinstance(data, str) else json.dumps(data)}")
+        lines.append("")
+    body = "\n".join(lines) + "\n"
+    return lambda _request: httpx2.Response(
+        200, content=body.encode(), headers={"content-type": "text/event-stream"}
+    )

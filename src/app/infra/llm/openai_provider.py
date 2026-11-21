@@ -11,8 +11,11 @@ Diferenças em relação à Anthropic que ficam contidas aqui:
 - a resposta vem em ``choices[0].message`` e os tokens em ``prompt_tokens``/``completion_tokens``.
 """
 
+from collections.abc import AsyncGenerator
+
 import httpx2
 import openai
+from openai.types import CompletionUsage
 from openai.types.chat import (
     ChatCompletion,
     ChatCompletionAssistantMessageParam,
@@ -32,7 +35,17 @@ from app.core.errors import (
     LLMUnavailableError,
 )
 from app.core.logging import get_logger
-from app.domain.llm import ChatRequest, ChatResponse, Message, Role, StopReason, Usage
+from app.domain.llm import (
+    ChatRequest,
+    ChatResponse,
+    Message,
+    Role,
+    StopReason,
+    StreamCompleted,
+    StreamEvent,
+    TextDelta,
+    Usage,
+)
 
 logger = get_logger(__name__)
 
@@ -90,6 +103,56 @@ class OpenAIProvider:
 
         return self._to_domain(completion)
 
+    async def stream(self, request: ChatRequest) -> AsyncGenerator[StreamEvent, None]:
+        parts: list[str] = []
+        model = request.model or self._model
+        finish_reason: str | None = None
+        refused = False
+        usage: CompletionUsage | None = None
+        try:
+            chunks = await self._client.chat.completions.create(
+                model=request.model or self._model,
+                messages=_to_messages(request),
+                max_completion_tokens=(
+                    request.max_output_tokens
+                    if request.max_output_tokens is not None
+                    else openai.omit
+                ),
+                temperature=(
+                    request.temperature if request.temperature is not None else openai.omit
+                ),
+                reasoning_effort=self._reasoning_effort or openai.omit,
+                stream=True,
+                # Sem isto a OpenAI não informa os tokens no streaming. Eles chegam num último
+                # chunk, sem `choices`.
+                stream_options={"include_usage": True},
+            )
+            # `async with` fecha a conexão se o consumidor parar no meio (cliente desconectou).
+            async with chunks:
+                async for chunk in chunks:
+                    model = chunk.model or model
+                    usage = chunk.usage or usage
+                    if not chunk.choices:
+                        continue
+                    choice = chunk.choices[0]
+                    finish_reason = choice.finish_reason or finish_reason
+                    refused = refused or bool(choice.delta.refusal)
+                    if choice.delta.content:
+                        parts.append(choice.delta.content)
+                        yield TextDelta(text=choice.delta.content)
+        except openai.APIError as exc:
+            raise _translate_error(exc) from exc
+
+        yield StreamCompleted(
+            response=self._build_response(
+                content="".join(parts),
+                model=model,
+                finish_reason=finish_reason,
+                refused=refused,
+                usage=usage,
+            )
+        )
+
     async def aclose(self) -> None:
         await self._client.close()
 
@@ -98,26 +161,42 @@ class OpenAIProvider:
             msg = "OpenAI returned no choices"
             raise LLMProviderError(msg)
         choice = completion.choices[0]
+        return self._build_response(
+            content=choice.message.content or "",
+            model=completion.model,
+            finish_reason=choice.finish_reason,
+            refused=bool(choice.message.refusal),
+            usage=completion.usage,
+        )
 
-        if choice.message.refusal:
+    def _build_response(
+        self,
+        *,
+        content: str,
+        model: str,
+        finish_reason: str | None,
+        refused: bool,
+        usage: CompletionUsage | None,
+    ) -> ChatResponse:
+        """Monta a resposta de domínio — compartilhado por ``chat`` e ``stream``."""
+        if refused:
             # Recusa explícita do modelo (campo próprio, separado do conteúdo).
             stop_reason = StopReason.CONTENT_FILTER
         else:
-            mapped = _FINISH_REASONS.get(choice.finish_reason)
+            mapped = _FINISH_REASONS.get(finish_reason or "")
             if mapped is None:
                 # tool_calls/function_call só ocorrem com tools, que ainda não usamos.
-                msg = f"Unexpected finish_reason from OpenAI: {choice.finish_reason!r}"
+                msg = f"Unexpected finish_reason from OpenAI: {finish_reason!r}"
                 raise LLMProviderError(msg)
             stop_reason = mapped
 
-        usage = completion.usage
         if usage is None:
             # Algumas APIs compatíveis omitem `usage`. Não falhamos, mas registramos.
-            logger.warning("llm_usage_missing", provider=self.name, model=completion.model)
+            logger.warning("llm_usage_missing", provider=self.name, model=model)
 
         return ChatResponse(
-            content=choice.message.content or "",
-            model=completion.model,
+            content=content,
+            model=model,
             provider=self.name,
             stop_reason=stop_reason,
             usage=Usage(

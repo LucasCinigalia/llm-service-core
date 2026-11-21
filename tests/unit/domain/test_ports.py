@@ -5,7 +5,19 @@
 estático). Se você remover ``name`` ou mudar a assinatura de ``chat``, o ``make typecheck`` falha.
 """
 
-from app.domain.llm import ChatRequest, ChatResponse, Message, Role, StopReason, Usage
+from collections.abc import AsyncGenerator
+
+from app.domain.llm import (
+    ChatRequest,
+    ChatResponse,
+    Message,
+    Role,
+    StopReason,
+    StreamCompleted,
+    StreamEvent,
+    TextDelta,
+    Usage,
+)
 from app.domain.ports import LLMProvider
 
 
@@ -23,6 +35,11 @@ class EchoProvider:
             stop_reason=StopReason.END_TURN,
             usage=Usage(input_tokens=len(last), output_tokens=len(last)),
         )
+
+    async def stream(self, request: ChatRequest) -> AsyncGenerator[StreamEvent, None]:
+        response = await self.chat(request)
+        yield TextDelta(text=response.content)
+        yield StreamCompleted(response=response)
 
     async def aclose(self) -> None:
         pass

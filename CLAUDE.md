@@ -48,6 +48,8 @@ Regra: `domain/` não importa nada de `infra/`, `api/` nem de bibliotecas de ter
   - [x] extra: padrão Claude Haiku 5.5 + `effort` configurável (fallback de recusa desligado)
 - [x] 11. feat(infra): adapter OpenAI
 - [ ] 12. feat: streaming via SSE
+  - [x] 12a. feat(infra): `stream()` no port e nos 3 providers + contrato
+  - [ ] 12b. feat(api): service de streaming + endpoint SSE `/v1/chat/stream`
 - [ ] 13. feat: saída estruturada (Pydantic)
 - [ ] 14. feat: tool calling genérico
 - [ ] 15. feat: resiliência — retry com backoff, timeout e fallback entre providers

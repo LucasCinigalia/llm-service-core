@@ -4,9 +4,20 @@ import time
 import pytest
 
 from app.core.errors import ExternalServiceError
-from app.domain.llm import ChatRequest, ChatResponse, Message, Role, StopReason, Usage
+from app.domain.llm import (
+    ChatRequest,
+    ChatResponse,
+    Message,
+    Role,
+    StopReason,
+    StreamCompleted,
+    StreamEvent,
+    TextDelta,
+    Usage,
+)
 from app.domain.ports import LLMProvider
-from app.infra.llm.fake import FakeLLMProvider, estimate_tokens
+from app.infra.llm.fake import FailMidStream, FakeLLMProvider, estimate_tokens
+from stream_helpers import drain_texts
 
 
 def make_request(text: str = "olá", **kwargs: object) -> ChatRequest:
@@ -123,3 +134,65 @@ async def test_simulated_latency_does_not_block_the_event_loop() -> None:
 @pytest.mark.parametrize(("text", "tokens"), [("", 1), ("abc", 1), ("abcd" * 10, 10)])
 def test_estimate_tokens(text: str, tokens: int) -> None:
     assert estimate_tokens(text) == tokens
+
+
+# --- Streaming --------------------------------------------------------------------------------
+
+
+async def collect(provider: FakeLLMProvider, request: ChatRequest) -> list[StreamEvent]:
+    return [event async for event in provider.stream(request)]
+
+
+async def test_stream_yields_word_chunks_then_completed() -> None:
+    provider = FakeLLMProvider(["Olá, tudo bem?"])
+
+    events = await collect(provider, make_request())
+
+    *deltas, completed = events
+    assert [d.text for d in deltas if isinstance(d, TextDelta)] == ["Olá, ", "tudo ", "bem?"]
+    assert isinstance(completed, StreamCompleted)
+    assert completed.response.content == "Olá, tudo bem?"
+
+
+async def test_stream_raises_scripted_errors_before_any_event() -> None:
+    provider = FakeLLMProvider([ExternalServiceError("down")])
+
+    with pytest.raises(ExternalServiceError):
+        await collect(provider, make_request())
+
+
+async def test_stream_can_fail_midway() -> None:
+    provider = FakeLLMProvider(
+        [FailMidStream(ExternalServiceError("lost connection"), after_chunks=2, content="a b c d")]
+    )
+    received: list[str] = []
+
+    with pytest.raises(ExternalServiceError, match="lost connection"):
+        await drain_texts(provider.stream(make_request()), into=received)
+
+    assert received == ["a ", "b "]
+
+
+async def test_fail_mid_stream_raises_immediately_in_chat() -> None:
+    provider = FakeLLMProvider([FailMidStream(ExternalServiceError("x"))])
+
+    with pytest.raises(ExternalServiceError):
+        await provider.chat(make_request())
+
+
+async def test_counts_streams_aborted_by_the_consumer() -> None:
+    provider = FakeLLMProvider(["uma resposta bem longa"])
+
+    stream = provider.stream(make_request())
+    await anext(stream)
+    await stream.aclose()  # o consumidor desiste (ex.: cliente HTTP desconectou)
+
+    assert provider.aborted_streams == 1
+
+
+async def test_completed_streams_are_not_counted_as_aborted() -> None:
+    provider = FakeLLMProvider()
+
+    await collect(provider, make_request())
+
+    assert provider.aborted_streams == 0

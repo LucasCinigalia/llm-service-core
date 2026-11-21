@@ -14,10 +14,17 @@ from app.core.errors import (
     LLMTimeoutError,
     LLMUnavailableError,
 )
-from app.domain.llm import ChatRequest, Message, Role, StopReason
+from app.domain.llm import ChatRequest, Message, Role, StopReason, StreamCompleted, TextDelta
 from app.domain.ports import LLMProvider
 from app.infra.llm.openai_provider import OpenAIProvider
-from http_mock import Handler, Recorder, json_response, raise_connection_error, raise_timeout
+from http_mock import (
+    Handler,
+    Recorder,
+    json_response,
+    raise_connection_error,
+    raise_timeout,
+    sse_response,
+)
 
 ProviderFactory = Callable[..., tuple[OpenAIProvider, Recorder]]
 
@@ -261,3 +268,73 @@ async def test_translates_connection_errors(provider_factory: ProviderFactory) -
 
     with pytest.raises(LLMUnavailableError):
         await provider.chat(make_request())
+
+
+# --- Streaming --------------------------------------------------------------------------------
+
+
+def chunk(content: str | None = None, finish_reason: str | None = None) -> dict[str, Any]:
+    return {
+        "id": "chatcmpl-test",
+        "object": "chat.completion.chunk",
+        "created": 1_700_000_000,
+        "model": "gpt-test-2026-01-01",
+        "choices": [
+            {
+                "index": 0,
+                "delta": {"content": content} if content is not None else {},
+                "finish_reason": finish_reason,
+            }
+        ],
+    }
+
+
+def usage_chunk() -> dict[str, Any]:
+    # Com stream_options.include_usage, o último chunk traz os tokens e nenhuma choice.
+    return {
+        **chunk(),
+        "choices": [],
+        "usage": {"prompt_tokens": 18, "completion_tokens": 4, "total_tokens": 22},
+    }
+
+
+def stream_of(*texts: str, finish_reason: str = "stop") -> Handler:
+    events: list[tuple[str | None, Any]] = [(None, chunk(t)) for t in texts]
+    events += [(None, chunk(finish_reason=finish_reason)), (None, usage_chunk()), (None, "[DONE]")]
+    return sse_response(events)
+
+
+async def test_stream_yields_text_deltas_then_completed_response(
+    provider_factory: ProviderFactory,
+) -> None:
+    provider, recorder = provider_factory(stream_of("Olá", "! Tudo", " bem?"))
+
+    events = [event async for event in provider.stream(make_request())]
+
+    *deltas, completed = events
+    assert [d.text for d in deltas if isinstance(d, TextDelta)] == ["Olá", "! Tudo", " bem?"]
+    assert isinstance(completed, StreamCompleted)
+    assert completed.response.content == "Olá! Tudo bem?"
+    assert completed.response.model == "gpt-test-2026-01-01"
+    assert completed.response.usage.input_tokens == 18
+    assert completed.response.usage.output_tokens == 4
+    assert recorder.last_body["stream"] is True
+    assert recorder.last_body["stream_options"] == {"include_usage": True}
+
+
+async def test_stream_maps_final_finish_reason(provider_factory: ProviderFactory) -> None:
+    provider, _ = provider_factory(stream_of("corta", finish_reason="length"))
+
+    events = [event async for event in provider.stream(make_request())]
+
+    assert isinstance(events[-1], StreamCompleted)
+    assert events[-1].response.stop_reason is StopReason.MAX_TOKENS
+
+
+async def test_stream_errors_before_first_event_are_translated(
+    provider_factory: ProviderFactory,
+) -> None:
+    provider, _ = provider_factory(json_response(429, error_json("rate_limit_exceeded")))
+
+    with pytest.raises(LLMRateLimitError):
+        _ = [event async for event in provider.stream(make_request())]

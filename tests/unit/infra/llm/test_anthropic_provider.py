@@ -20,10 +20,11 @@ from app.core.errors import (
     LLMTimeoutError,
     LLMUnavailableError,
 )
-from app.domain.llm import ChatRequest, Message, Role, StopReason
+from app.domain.llm import ChatRequest, Message, Role, StopReason, StreamCompleted, TextDelta
 from app.domain.ports import LLMProvider
 from app.infra.llm.anthropic_provider import REFUSAL_FALLBACK_BETA, AnthropicProvider
-from http_mock import Handler, Recorder, raise_connection_error, raise_timeout
+from http_mock import Handler, Recorder, raise_connection_error, raise_timeout, sse_response
+from stream_helpers import drain_texts
 
 
 def message_json(**overrides: Any) -> dict[str, Any]:
@@ -329,3 +330,101 @@ async def test_translates_connection_errors(provider_factory: ProviderFactory) -
 )
 def test_transient_errors_are_marked_retryable(error: type[AppError], retryable: bool) -> None:
     assert error("x").retryable is retryable
+
+
+# --- Streaming --------------------------------------------------------------------------------
+
+
+def stream_events(*texts: str, stop_reason: str = "end_turn") -> list[tuple[str | None, Any]]:
+    """Os eventos SSE que a API de Messages envia num streaming de texto."""
+    events: list[tuple[str | None, Any]] = [
+        (
+            "message_start",
+            {
+                "type": "message_start",
+                "message": {
+                    **message_json(content=[], stop_reason=None),
+                    "usage": {"input_tokens": 10, "output_tokens": 1},
+                },
+            },
+        ),
+        (
+            "content_block_start",
+            {
+                "type": "content_block_start",
+                "index": 0,
+                "content_block": {"type": "text", "text": ""},
+            },
+        ),
+    ]
+    events += [
+        (
+            "content_block_delta",
+            {"type": "content_block_delta", "index": 0, "delta": {"type": "text_delta", "text": t}},
+        )
+        for t in texts
+    ]
+    events += [
+        ("content_block_stop", {"type": "content_block_stop", "index": 0}),
+        (
+            "message_delta",
+            {
+                "type": "message_delta",
+                "delta": {"stop_reason": stop_reason, "stop_sequence": None},
+                "usage": {"output_tokens": 6},
+            },
+        ),
+        ("message_stop", {"type": "message_stop"}),
+    ]
+    return events
+
+
+async def test_stream_yields_text_deltas_then_completed_response(
+    provider_factory: ProviderFactory,
+) -> None:
+    provider, recorder = provider_factory(sse_response(stream_events("Olá", "! Tudo", " bem?")))
+
+    events = [event async for event in provider.stream(make_request())]
+
+    *deltas, completed = events
+    assert [d.text for d in deltas if isinstance(d, TextDelta)] == ["Olá", "! Tudo", " bem?"]
+    assert isinstance(completed, StreamCompleted)
+    assert completed.response.content == "Olá! Tudo bem?"
+    assert completed.response.stop_reason is StopReason.END_TURN
+    assert completed.response.usage.output_tokens == 6
+    assert recorder.last_body["stream"] is True
+
+
+async def test_stream_maps_final_stop_reason(provider_factory: ProviderFactory) -> None:
+    provider, _ = provider_factory(sse_response(stream_events("corta", stop_reason="max_tokens")))
+
+    events = [event async for event in provider.stream(make_request())]
+
+    assert isinstance(events[-1], StreamCompleted)
+    assert events[-1].response.stop_reason is StopReason.MAX_TOKENS
+
+
+async def test_stream_errors_before_first_event_are_translated(
+    provider_factory: ProviderFactory,
+) -> None:
+    provider, _ = provider_factory(
+        lambda _r: httpx2.Response(429, json=error_json("rate_limit_error"))
+    )
+
+    with pytest.raises(LLMRateLimitError):
+        _ = [event async for event in provider.stream(make_request())]
+
+
+async def test_mid_stream_error_is_translated_by_its_body_type(
+    provider_factory: ProviderFactory,
+) -> None:
+    # O HTTP já respondeu 200; o erro chega como um evento SSE `error` no meio do texto.
+    events = [*stream_events("Olá")[:3], ("error", error_json("overloaded_error"))]
+    provider, _ = provider_factory(sse_response(events))
+    received: list[str] = []
+
+    with pytest.raises(LLMUnavailableError) as exc_info:
+        await drain_texts(provider.stream(make_request()), into=received)
+
+    assert received == ["Olá"]
+    assert exc_info.value.retryable is True
