@@ -26,6 +26,7 @@ LLMProviderName = Literal["fake", "anthropic", "openai"]
 LogLevel = Literal["DEBUG", "INFO", "WARNING", "ERROR"]
 # Quanto o modelo raciocina antes de responder: menos effort = mais rápido e mais barato.
 AnthropicEffort = Literal["low", "medium", "high", "xhigh", "max"]
+OpenAIReasoningEffort = Literal["none", "minimal", "low", "medium", "high", "xhigh", "max"]
 
 
 class LLMSettings(BaseModel):
@@ -51,6 +52,14 @@ class LLMSettings(BaseModel):
     # o Haiku 5.5 não tem fallback e recusa a requisição se receber uma lista de modelos.
     anthropic_refusal_fallback: bool = False
 
+    # Sem padrão de propósito: os modelos da OpenAI mudam rápido — escolha um da lista atual
+    # (https://platform.openai.com/docs/models). Obrigatório quando o provider é "openai".
+    openai_model: str | None = None
+    # Para APIs compatíveis com OpenAI: Azure OpenAI, vLLM, Ollama, LM Studio, Groq...
+    openai_base_url: str | None = None
+    # Só para modelos de raciocínio. None = padrão do modelo.
+    openai_reasoning_effort: OpenAIReasoningEffort | None = None
+
     @model_validator(mode="after")
     def _require_key_for_default_provider(self) -> Self:
         required_keys: dict[str, SecretStr | None] = {
@@ -60,6 +69,9 @@ class LLMSettings(BaseModel):
         if self.default_provider in required_keys and required_keys[self.default_provider] is None:
             env_var = f"LLM__{self.default_provider.upper()}_API_KEY"
             msg = f"default_provider={self.default_provider!r} requires {env_var} to be set"
+            raise ValueError(msg)
+        if self.default_provider == "openai" and not self.openai_model:
+            msg = "default_provider='openai' requires LLM__OPENAI_MODEL to be set"
             raise ValueError(msg)
         return self
 

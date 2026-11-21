@@ -65,6 +65,7 @@ def test_fails_fast_when_default_provider_has_no_api_key(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("LLM__DEFAULT_PROVIDER", "openai")
+    monkeypatch.setenv("LLM__OPENAI_MODEL", "gpt-test")
 
     with pytest.raises(ValidationError, match="LLM__OPENAI_API_KEY"):
         make_settings()
@@ -125,4 +126,12 @@ def test_rejects_unknown_effort(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("LLM__ANTHROPIC_EFFORT", "extreme")
 
     with pytest.raises(ValidationError, match="anthropic_effort"):
+        make_settings()
+
+
+def test_openai_requires_an_explicit_model(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("LLM__DEFAULT_PROVIDER", "openai")
+    monkeypatch.setenv("LLM__OPENAI_API_KEY", "sk-test")
+
+    with pytest.raises(ValidationError, match="LLM__OPENAI_MODEL"):
         make_settings()

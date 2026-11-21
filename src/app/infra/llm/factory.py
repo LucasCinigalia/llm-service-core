@@ -8,10 +8,11 @@ from app.core.config import LLMSettings
 from app.domain.ports import LLMProvider
 from app.infra.llm.anthropic_provider import AnthropicProvider
 from app.infra.llm.fake import FakeLLMProvider
+from app.infra.llm.openai_provider import OpenAIProvider
 
 
 class ProviderNotAvailableError(RuntimeError):
-    """Erro de configuração: o provider pedido ainda não tem adapter."""
+    """Erro de configuração: o provider pedido não pode ser construído."""
 
 
 def build_llm_provider(settings: LLMSettings) -> LLMProvider:
@@ -31,6 +32,15 @@ def build_llm_provider(settings: LLMSettings) -> LLMProvider:
                 refusal_fallback=settings.anthropic_refusal_fallback,
             )
         case "openai":
-            # Adapter chega no commit 11.
-            msg = f"LLM provider {settings.default_provider!r} is not implemented yet"
-            raise ProviderNotAvailableError(msg)
+            # Já validados em LLMSettings; a checagem aqui é para o mypy (tipos opcionais).
+            if settings.openai_api_key is None or settings.openai_model is None:
+                msg = "LLM__OPENAI_API_KEY and LLM__OPENAI_MODEL are required for openai"
+                raise ProviderNotAvailableError(msg)
+            return OpenAIProvider(
+                api_key=settings.openai_api_key.get_secret_value(),
+                model=settings.openai_model,
+                base_url=settings.openai_base_url,
+                reasoning_effort=settings.openai_reasoning_effort,
+                timeout_seconds=settings.request_timeout_seconds,
+                max_retries=settings.max_retries,
+            )

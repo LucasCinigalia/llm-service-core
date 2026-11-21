@@ -34,5 +34,14 @@ LLM__ANTHROPIC_API_KEY=sk-ant-...
 LLM__ANTHROPIC_MODEL=claude-haiku-5-5   # padrão; ou claude-sonnet-5-5 / claude-opus-5-5
 LLM__ANTHROPIC_EFFORT=low               # opcional: low | medium | high | xhigh | max
 ```
+
+Para usar a OpenAI (ou qualquer API compatível — Azure OpenAI, vLLM, Ollama):
+
+```bash
+LLM__DEFAULT_PROVIDER=openai
+LLM__OPENAI_API_KEY=sk-...
+LLM__OPENAI_MODEL=<modelo da lista atual da OpenAI>
+LLM__OPENAI_BASE_URL=http://localhost:11434/v1   # opcional, ex.: Ollama
+```
  Veja
 [`.env.example`](.env.example) para todas as opções e `src/app/core/config.py` para a validação.

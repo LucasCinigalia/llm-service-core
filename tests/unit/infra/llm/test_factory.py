@@ -5,6 +5,7 @@ from app.core.config import LLMSettings
 from app.infra.llm.anthropic_provider import AnthropicProvider
 from app.infra.llm.factory import ProviderNotAvailableError, build_llm_provider
 from app.infra.llm.fake import FakeLLMProvider
+from app.infra.llm.openai_provider import OpenAIProvider
 
 
 def test_builds_fake_provider_by_default() -> None:
@@ -20,8 +21,20 @@ async def test_builds_anthropic_provider_when_configured() -> None:
     await provider.aclose()
 
 
-def test_fails_fast_for_providers_without_adapter() -> None:
-    settings = LLMSettings(default_provider="openai", openai_api_key=SecretStr("sk"))
+async def test_builds_openai_provider_when_configured() -> None:
+    settings = LLMSettings(
+        default_provider="openai", openai_api_key=SecretStr("sk"), openai_model="gpt-test"
+    )
 
-    with pytest.raises(ProviderNotAvailableError, match="openai"):
+    provider = build_llm_provider(settings)
+
+    assert isinstance(provider, OpenAIProvider)
+    await provider.aclose()
+
+
+def test_factory_double_checks_required_openai_settings() -> None:
+    # model_construct pula a validação: simula settings montadas sem passar pelo validator.
+    settings = LLMSettings.model_construct(default_provider="openai", openai_api_key=None)
+
+    with pytest.raises(ProviderNotAvailableError, match="LLM__OPENAI_MODEL"):
         build_llm_provider(settings)

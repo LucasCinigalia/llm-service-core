@@ -5,7 +5,6 @@ Injetamos no SDK um cliente ``httpx2`` com ``MockTransport``: o SDK monta a requ
 Assim testamos o adapter *e* a integração com o SDK de verdade — só a rede é simulada.
 """
 
-import json
 from collections.abc import AsyncIterator, Callable
 from typing import Any
 
@@ -24,8 +23,7 @@ from app.core.errors import (
 from app.domain.llm import ChatRequest, Message, Role, StopReason
 from app.domain.ports import LLMProvider
 from app.infra.llm.anthropic_provider import REFUSAL_FALLBACK_BETA, AnthropicProvider
-
-Handler = Callable[[httpx2.Request], httpx2.Response]
+from http_mock import Handler, Recorder, raise_connection_error, raise_timeout
 
 
 def message_json(**overrides: Any) -> dict[str, Any]:
@@ -56,23 +54,6 @@ def error_json(error_type: str, message: str = "boom") -> dict[str, Any]:
     return {"type": "error", "error": {"type": error_type, "message": message}}
 
 
-class Recorder:
-    """Guarda as requisições HTTP que o SDK tentou enviar."""
-
-    def __init__(self, handler: Handler) -> None:
-        self.handler = handler
-        self.requests: list[httpx2.Request] = []
-
-    def __call__(self, request: httpx2.Request) -> httpx2.Response:
-        self.requests.append(request)
-        return self.handler(request)
-
-    @property
-    def last_body(self) -> dict[str, Any]:
-        body: dict[str, Any] = json.loads(self.requests[-1].content)
-        return body
-
-
 ProviderFactory = Callable[..., tuple[AnthropicProvider, Recorder]]
 
 
@@ -88,7 +69,7 @@ async def provider_factory() -> AsyncIterator[ProviderFactory]:
             model="claude-haiku-5-5",
             timeout_seconds=5,
             max_retries=0,  # sem retentativas do SDK: cada teste vê exatamente uma chamada
-            http_client=httpx2.AsyncClient(transport=httpx2.MockTransport(recorder)),
+            http_client=recorder.client(),
             **kwargs,
         )
         created.append(provider)
@@ -323,20 +304,14 @@ async def test_translates_http_errors(
 
 
 async def test_translates_timeouts(provider_factory: ProviderFactory) -> None:
-    def timeout(request: httpx2.Request) -> httpx2.Response:
-        raise httpx2.ReadTimeout("timed out", request=request)
-
-    provider, _ = provider_factory(timeout)
+    provider, _ = provider_factory(raise_timeout)
 
     with pytest.raises(LLMTimeoutError):
         await provider.chat(make_request())
 
 
 async def test_translates_connection_errors(provider_factory: ProviderFactory) -> None:
-    def unreachable(request: httpx2.Request) -> httpx2.Response:
-        raise httpx2.ConnectError("connection refused", request=request)
-
-    provider, _ = provider_factory(unreachable)
+    provider, _ = provider_factory(raise_connection_error)
 
     with pytest.raises(LLMUnavailableError):
         await provider.chat(make_request())

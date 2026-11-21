@@ -8,6 +8,7 @@ license = "MIT"
 dependencies = [
     "anthropic>=2.12.0",
     "fastapi>=0.165.0",
+    "openai>=3.57.0",
     "pydantic-settings>=2.16.3",
     "structlog>=26.1.0",
     "uvicorn[standard]>=0.54.0",
@@ -65,7 +66,7 @@ select = [
 [tool.mypy]
 python_version = "3.12"
 strict = true
-mypy_path = "src"
+mypy_path = ["src", "tests"]
 files = ["src", "tests"]
 plugins = ["pydantic.mypy"]
 warn_unreachable = true
@@ -76,6 +77,8 @@ pretty = true
 # ---------------------------------------------------------------------------
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# Permite importar módulos de apoio de `tests/` (ex.: `from http_mock import Recorder`).
+pythonpath = ["tests"]
 addopts = ["-ra", "--strict-markers", "--strict-config"]
 xfail_strict = true
 # Testes `async def` rodam no event loop automaticamente, sem precisar de marcador.
