@@ -45,3 +45,16 @@ LLM__OPENAI_BASE_URL=http://localhost:11434/v1   # opcional, ex.: Ollama
 ```
  Veja
 [`.env.example`](.env.example) para todas as opções e `src/app/core/config.py` para a validação.
+
+## Endpoints
+
+| Método | Rota | Descrição |
+|---|---|---|
+| `GET` | `/health` | Liveness |
+| `POST` | `/v1/chat` | Resposta completa (JSON) |
+| `POST` | `/v1/chat/stream` | Resposta aos poucos via Server-Sent Events (`delta`*, `done` ou `error`) |
+
+```bash
+curl -N localhost:8000/v1/chat/stream -H 'Content-Type: application/json' \
+  -d '{"messages":[{"role":"user","content":"Explique streaming."}]}'
+```

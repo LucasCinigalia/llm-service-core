@@ -13,7 +13,7 @@ from fastapi import FastAPI
 from app import __version__
 from app.api.errors import register_exception_handlers
 from app.api.middleware import RequestContextMiddleware
-from app.api.routes import chat, health
+from app.api.routes import chat, chat_stream, health
 from app.core.config import Environment, Settings, get_settings
 from app.core.logging import configure_logging, get_logger
 from app.domain.ports import LLMProvider
@@ -67,5 +67,6 @@ def create_app(
     register_exception_handlers(app)
     app.include_router(health.router)
     app.include_router(chat.router)
+    app.include_router(chat_stream.router)
 
     return app

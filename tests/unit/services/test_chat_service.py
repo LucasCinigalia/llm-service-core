@@ -61,3 +61,38 @@ async def test_propagates_provider_errors(service: ChatService, fake: FakeLLMPro
 
     with pytest.raises(ExternalServiceError, match="provider down"):
         await service.chat(make_request())
+
+
+# --- Streaming --------------------------------------------------------------------------------
+
+
+async def test_stream_applies_defaults_and_forwards_events(
+    service: ChatService, fake: FakeLLMProvider
+) -> None:
+    fake.enqueue("um dois")
+
+    events = [event async for event in service.stream(make_request())]
+
+    assert [type(e).__name__ for e in events] == ["TextDelta", "TextDelta", "StreamCompleted"]
+    assert fake.requests[0].max_output_tokens == 256
+
+
+async def test_abandoning_the_stream_closes_the_provider_stream(
+    service: ChatService, fake: FakeLLMProvider
+) -> None:
+    fake.enqueue("uma resposta longa que ninguém vai ler até o fim")
+
+    stream = service.stream(make_request())
+    await anext(stream)
+    await stream.aclose()  # ex.: o cliente HTTP desconectou
+
+    assert fake.aborted_streams == 1  # o provider foi avisado — e pararia de gerar tokens
+
+
+async def test_stream_propagates_provider_errors(
+    service: ChatService, fake: FakeLLMProvider
+) -> None:
+    fake.enqueue(ExternalServiceError("down"))
+
+    with pytest.raises(ExternalServiceError):
+        _ = [event async for event in service.stream(make_request())]

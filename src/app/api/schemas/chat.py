@@ -74,3 +74,9 @@ class ChatResponseBody(BaseModel):
                 total_tokens=response.usage.total_tokens,
             ),
         )
+
+
+class StreamDeltaOut(BaseModel):
+    """Dados do evento SSE ``delta``: um pedaço do texto, na ordem."""
+
+    text: str
