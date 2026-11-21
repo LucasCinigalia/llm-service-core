@@ -129,9 +129,14 @@ def test_rejects_unknown_effort(monkeypatch: pytest.MonkeyPatch) -> None:
         make_settings()
 
 
-def test_openai_requires_an_explicit_model(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_openai_defaults_to_gpt_6_luna() -> None:
+    assert make_settings().llm.openai_model == "gpt-6-luna"
+
+
+def test_openai_rejects_an_empty_model(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("LLM__DEFAULT_PROVIDER", "openai")
     monkeypatch.setenv("LLM__OPENAI_API_KEY", "sk-test")
+    monkeypatch.setenv("LLM__OPENAI_MODEL", "")
 
     with pytest.raises(ValidationError, match="LLM__OPENAI_MODEL"):
         make_settings()

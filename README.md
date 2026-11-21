@@ -40,7 +40,7 @@ Para usar a OpenAI (ou qualquer API compatível — Azure OpenAI, vLLM, Ollama):
 ```bash
 LLM__DEFAULT_PROVIDER=openai
 LLM__OPENAI_API_KEY=sk-...
-LLM__OPENAI_MODEL=<modelo da lista atual da OpenAI>
+LLM__OPENAI_MODEL=gpt-6-luna                     # padrão
 LLM__OPENAI_BASE_URL=http://localhost:11434/v1   # opcional, ex.: Ollama
 ```
  Veja

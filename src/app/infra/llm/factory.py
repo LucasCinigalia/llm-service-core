@@ -33,7 +33,7 @@ def build_llm_provider(settings: LLMSettings) -> LLMProvider:
             )
         case "openai":
             # Já validados em LLMSettings; a checagem aqui é para o mypy (tipos opcionais).
-            if settings.openai_api_key is None or settings.openai_model is None:
+            if settings.openai_api_key is None or not settings.openai_model:
                 msg = "LLM__OPENAI_API_KEY and LLM__OPENAI_MODEL are required for openai"
                 raise ProviderNotAvailableError(msg)
             return OpenAIProvider(

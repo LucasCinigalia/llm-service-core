@@ -52,9 +52,8 @@ class LLMSettings(BaseModel):
     # o Haiku 5.5 não tem fallback e recusa a requisição se receber uma lista de modelos.
     anthropic_refusal_fallback: bool = False
 
-    # Sem padrão de propósito: os modelos da OpenAI mudam rápido — escolha um da lista atual
-    # (https://platform.openai.com/docs/models). Obrigatório quando o provider é "openai".
-    openai_model: str | None = None
+    # Modelos da OpenAI mudam rápido: confira a lista atual em https://platform.openai.com/docs/models
+    openai_model: str = "gpt-6-luna"
     # Para APIs compatíveis com OpenAI: Azure OpenAI, vLLM, Ollama, LM Studio, Groq...
     openai_base_url: str | None = None
     # Só para modelos de raciocínio. None = padrão do modelo.
@@ -71,7 +70,7 @@ class LLMSettings(BaseModel):
             msg = f"default_provider={self.default_provider!r} requires {env_var} to be set"
             raise ValueError(msg)
         if self.default_provider == "openai" and not self.openai_model:
-            msg = "default_provider='openai' requires LLM__OPENAI_MODEL to be set"
+            msg = "default_provider='openai' requires a non-empty LLM__OPENAI_MODEL"
             raise ValueError(msg)
         return self
 
