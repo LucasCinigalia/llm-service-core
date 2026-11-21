@@ -1,7 +1,8 @@
 # llm-service-core
 
 Fundação reutilizável para serviços baseados em LLMs — Projeto 0 da série de boilerplates
-descrita em [`docs/ROADMAP.md`](docs/ROADMAP.md).
+descrita no repositório central
+[`ai-engineering-roadmap`](https://github.com/LucasCinigalia/ai-engineering-roadmap).
 
 > 🚧 Em construção, commit a commit.
 

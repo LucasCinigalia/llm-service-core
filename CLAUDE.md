@@ -1,8 +1,13 @@
 # CLAUDE.md — llm-service-core
 
 Projeto 0 (fundação) de uma série de boilerplates de estudo para vagas de AI Engineer /
-AI Software Engineer / Forward Deployed Engineer. O plano completo, a stack e as decisões estão em
-[`docs/ROADMAP.md`](docs/ROADMAP.md) — leia antes de começar qualquer trabalho.
+AI Software Engineer / Forward Deployed Engineer.
+
+**Contexto central:** o plano completo, o status de todos os projetos, a stack e as decisões
+globais estão no repositório
+[`LucasCinigalia/ai-engineering-roadmap`](https://github.com/LucasCinigalia/ai-engineering-roadmap)
+(`CLAUDE.md`, `ROADMAP.md`, `DECISIONS.md`). Anexe-o à sessão e leia esses arquivos antes de
+começar qualquer trabalho. O `docs/ROADMAP.md` deste repositório é só um resumo com o link.
 
 ## Modo de trabalho (obrigatório)
 
@@ -15,7 +20,10 @@ AI Software Engineer / Forward Deployed Engineer. O plano completo, a stack e as
 - Commits **somente no perfil do usuário**: autor e committer = usuário (git config local do repo),
   **sem** trailers `Co-Authored-By`, `Claude-Session` ou qualquer outra atribuição, e sem assinatura
   com a chave do ambiente (`commit.gpgsign=false` no repo).
-- Sempre atualizar o checklist abaixo e o status em `docs/ROADMAP.md` ao concluir etapas.
+- Sempre atualizar o checklist abaixo ao concluir etapas e, no repositório central, o status em
+  `ROADMAP.md` (e `DECISIONS.md` quando surgir uma decisão que afete outros projetos).
+- Ao concluir o projeto inteiro: escrever `projects/00-llm-service-core.md` no repositório central
+  com o contrato de integração (ports, erros, configuração, pontos de extensão).
 
 ## Arquitetura
 
