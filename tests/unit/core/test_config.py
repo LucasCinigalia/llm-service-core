@@ -111,3 +111,18 @@ def test_max_output_tokens_rejects_out_of_range(
 def test_max_output_tokens_accepts_boundaries(monkeypatch: pytest.MonkeyPatch, value: str) -> None:
     monkeypatch.setenv("LLM__MAX_OUTPUT_TOKENS", value)
     assert make_settings().llm.max_output_tokens == int(value)
+
+
+def test_anthropic_defaults_to_haiku_with_model_default_effort() -> None:
+    llm = make_settings().llm
+
+    assert llm.anthropic_model == "claude-haiku-5-5"
+    assert llm.anthropic_effort is None
+    assert llm.anthropic_refusal_fallback is False
+
+
+def test_rejects_unknown_effort(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("LLM__ANTHROPIC_EFFORT", "extreme")
+
+    with pytest.raises(ValidationError, match="anthropic_effort"):
+        make_settings()

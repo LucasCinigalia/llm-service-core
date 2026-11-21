@@ -25,6 +25,7 @@ def build_llm_provider(settings: LLMSettings) -> LLMProvider:
             return AnthropicProvider(
                 api_key=settings.anthropic_api_key.get_secret_value(),
                 model=settings.anthropic_model,
+                effort=settings.anthropic_effort,
                 timeout_seconds=settings.request_timeout_seconds,
                 max_retries=settings.max_retries,
                 refusal_fallback=settings.anthropic_refusal_fallback,

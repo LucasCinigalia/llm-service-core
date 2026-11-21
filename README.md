@@ -31,6 +31,8 @@ Sem nenhuma chave de API o serviço já funciona com o provider `fake`. Para usa
 ```bash
 LLM__DEFAULT_PROVIDER=anthropic
 LLM__ANTHROPIC_API_KEY=sk-ant-...
+LLM__ANTHROPIC_MODEL=claude-haiku-5-5   # padrão; ou claude-sonnet-5-5 / claude-opus-5-5
+LLM__ANTHROPIC_EFFORT=low               # opcional: low | medium | high | xhigh | max
 ```
  Veja
 [`.env.example`](.env.example) para todas as opções e `src/app/core/config.py` para a validação.

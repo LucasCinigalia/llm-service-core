@@ -24,6 +24,8 @@ class Environment(StrEnum):
 
 LLMProviderName = Literal["fake", "anthropic", "openai"]
 LogLevel = Literal["DEBUG", "INFO", "WARNING", "ERROR"]
+# Quanto o modelo raciocina antes de responder: menos effort = mais rápido e mais barato.
+AnthropicEffort = Literal["low", "medium", "high", "xhigh", "max"]
 
 
 class LLMSettings(BaseModel):
@@ -39,9 +41,15 @@ class LLMSettings(BaseModel):
     # Retentativas feitas pelo próprio SDK (falhas transitórias). Resiliência completa: commit 15.
     max_retries: int = Field(default=2, ge=0, le=10)
 
-    anthropic_model: str = "claude-opus-5-5"
-    # Se o modelo recusar por política de segurança, a API refaz a chamada em outro modelo.
-    anthropic_refusal_fallback: bool = True
+    # Haiku: o modelo mais rápido e barato da Anthropic, ótimo para estudar e para volume.
+    # Troque por "claude-sonnet-5-5" ou "claude-opus-5-5" quando precisar de mais capacidade.
+    anthropic_model: str = "claude-haiku-5-5"
+    # None = padrão do modelo (no Haiku 5.5 e no Opus 5.5, "medium").
+    anthropic_effort: AnthropicEffort | None = None
+    # Fallback de recusa no servidor: se o modelo recusar por política de segurança, a API refaz
+    # a chamada em outro modelo. Ligue só em modelos que suportam (Opus, Sonnet, Fable) —
+    # o Haiku 5.5 não tem fallback e recusa a requisição se receber uma lista de modelos.
+    anthropic_refusal_fallback: bool = False
 
     @model_validator(mode="after")
     def _require_key_for_default_provider(self) -> Self:

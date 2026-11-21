@@ -45,6 +45,7 @@ Regra: `domain/` não importa nada de `infra/`, `api/` nem de bibliotecas de ter
 - [x] 8. feat(infra): provider fake + testes
 - [x] 9. feat(services/api): serviço de chat + endpoint `/v1/chat`
 - [x] 10. feat(infra): adapter Anthropic
+  - [x] extra: padrão Claude Haiku 5.5 + `effort` configurável (fallback de recusa desligado)
 - [ ] 11. feat(infra): adapter OpenAI
 - [ ] 12. feat: streaming via SSE
 - [ ] 13. feat: saída estruturada (Pydantic)

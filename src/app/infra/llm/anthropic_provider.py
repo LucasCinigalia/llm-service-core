@@ -17,6 +17,7 @@ from anthropic.types.beta import (
     BetaUserMessageParam,
 )
 
+from app.core.config import AnthropicEffort
 from app.core.errors import (
     AppError,
     LLMConfigurationError,
@@ -53,10 +54,12 @@ class AnthropicProvider:
         model: str,
         timeout_seconds: float,
         max_retries: int,
-        refusal_fallback: bool = True,
+        effort: AnthropicEffort | None = None,
+        refusal_fallback: bool = False,
         http_client: httpx2.AsyncClient | None = None,
     ) -> None:
         self._model = model
+        self._effort = effort
         self._refusal_fallback = refusal_fallback
         # Um cliente por processo: ele mantém um pool de conexões HTTP reaproveitado entre requests.
         self._client = anthropic.AsyncAnthropic(
@@ -88,6 +91,7 @@ class AnthropicProvider:
                 messages=[_to_message_param(m.role, m.content) for m in request.messages],
                 betas=[REFUSAL_FALLBACK_BETA] if self._refusal_fallback else anthropic.omit,
                 fallbacks="default" if self._refusal_fallback else anthropic.omit,
+                output_config={"effort": self._effort} if self._effort else anthropic.omit,
             )
         except anthropic.APIError as exc:
             raise _translate_error(exc) from exc

@@ -34,7 +34,7 @@ def message_json(**overrides: Any) -> dict[str, Any]:
         "id": "msg_test",
         "type": "message",
         "role": "assistant",
-        "model": "claude-opus-5-5",
+        "model": "claude-haiku-5-5",
         "content": [
             {"type": "thinking", "thinking": "", "signature": "sig"},
             {"type": "text", "text": "Olá! "},
@@ -85,7 +85,7 @@ async def provider_factory() -> AsyncIterator[ProviderFactory]:
         recorder = Recorder(handler)
         provider = AnthropicProvider(
             api_key="sk-ant-test",
-            model="claude-opus-5-5",
+            model="claude-haiku-5-5",
             timeout_seconds=5,
             max_retries=0,  # sem retentativas do SDK: cada teste vê exatamente uma chamada
             http_client=httpx2.AsyncClient(transport=httpx2.MockTransport(recorder)),
@@ -136,7 +136,7 @@ async def test_translates_domain_request_into_messages_api_call(
     assert http_request.method == "POST"
     assert http_request.url.path == "/v1/messages"
     assert http_request.headers["authorization"] == "Bearer sk-ant-test"
-    assert recorder.last_body["model"] == "claude-opus-5-5"
+    assert recorder.last_body["model"] == "claude-haiku-5-5"
     assert recorder.last_body["max_tokens"] == 1000
     assert recorder.last_body["system"] == "Seja conciso."
     assert recorder.last_body["messages"] == [
@@ -170,24 +170,42 @@ async def test_does_not_send_temperature(provider_factory: ProviderFactory) -> N
     assert "temperature" not in recorder.last_body
 
 
-async def test_enables_server_side_refusal_fallback_by_default(
+async def test_refusal_fallback_is_off_by_default(provider_factory: ProviderFactory) -> None:
+    # O padrão é o Haiku 5.5, que não tem fallback de recusa no servidor.
+    provider, recorder = provider_factory(ok())
+
+    await provider.chat(make_request())
+
+    assert "fallbacks" not in recorder.last_body
+    assert "anthropic-beta" not in recorder.requests[-1].headers
+
+
+async def test_refusal_fallback_can_be_enabled(provider_factory: ProviderFactory) -> None:
+    provider, recorder = provider_factory(ok(), refusal_fallback=True)
+
+    await provider.chat(make_request(model="claude-opus-5-5"))
+
+    assert recorder.last_body["fallbacks"] == "default"
+    assert REFUSAL_FALLBACK_BETA in recorder.requests[-1].headers["anthropic-beta"]
+
+
+async def test_uses_model_default_effort_when_not_configured(
     provider_factory: ProviderFactory,
 ) -> None:
     provider, recorder = provider_factory(ok())
 
     await provider.chat(make_request())
 
-    assert recorder.last_body["fallbacks"] == "default"
-    assert REFUSAL_FALLBACK_BETA in recorder.requests[-1].headers["anthropic-beta"]
+    assert "output_config" not in recorder.last_body
 
 
-async def test_refusal_fallback_can_be_disabled(provider_factory: ProviderFactory) -> None:
-    provider, recorder = provider_factory(ok(), refusal_fallback=False)
+@pytest.mark.parametrize("effort", ["low", "medium", "high", "xhigh", "max"])
+async def test_sends_configured_effort(provider_factory: ProviderFactory, effort: str) -> None:
+    provider, recorder = provider_factory(ok(), effort=effort)
 
     await provider.chat(make_request())
 
-    assert "fallbacks" not in recorder.last_body
-    assert "anthropic-beta" not in recorder.requests[-1].headers
+    assert recorder.last_body["output_config"] == {"effort": effort}
 
 
 async def test_requires_max_output_tokens(provider_factory: ProviderFactory) -> None:
@@ -209,7 +227,7 @@ async def test_translates_response_into_domain(provider_factory: ProviderFactory
 
     assert response.content == "Olá! Como posso ajudar?"  # só blocos de texto, concatenados
     assert response.provider == "anthropic"
-    assert response.model == "claude-opus-5-5"
+    assert response.model == "claude-haiku-5-5"
     assert response.stop_reason is StopReason.END_TURN
 
 
